@@ -53,6 +53,30 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/productName" />
 
+            <TextView
+                android:id="@+id/productCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="00000000000"
+                android:textAlignment="center"
+                android:textColor="#000000"
+                android:textSize="48sp"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/productPrice" />
+
+            <TextView
+                android:id="@+id/productError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text=""
+                android:textAlignment="center"
+                android:textColor="#000000"
+                android:textSize="48sp"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/productCode" />
+
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </ScrollView>

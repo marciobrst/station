@@ -20,6 +20,8 @@
             android:name=".ProductActivity"
             android:exported="false"
             android:label="@string/title_activity_product"
+            android:configChanges="orientation"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.AppFullScreenTheme" />
         <activity
             android:name=".MainActivity"

@@ -12,12 +12,11 @@ import android.widget.EditText
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import br.com.embiess83.station.model.BannerModel
-import br.com.embiess83.station.service.BannerService
+import br.com.embiess83.station.service.RestService
+import br.com.embiess83.station.service.RestClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
@@ -34,6 +33,8 @@ class MainActivity : AppCompatActivity() {
 
     private var list = mutableListOf<BannerModel>()
 
+    private var barcode = StringBuilder()
+
     /*
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         Log.i("TAG", "" + keyCode)
@@ -43,17 +44,25 @@ class MainActivity : AppCompatActivity() {
     }*/
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val code = event.unicodeChar
-        Log.d("event code:", "" + code)
 
-        val intent: Intent = Intent(
-            this,
-            ProductActivity::class.java
-        )
-        intent. putExtra("code", "" + code)
-        startActivity(intent)
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val pressedKey = event.unicodeChar.toChar()
+            barcode.append(pressedKey)
 
-        return true
+        }
+        if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_ENTER) {
+            Log.d("barcode", "" + barcode)
+            val intent: Intent = Intent(
+                this,
+                ProductActivity::class.java
+            )
+            intent. putExtra("code", barcode.toString().trim())
+            startActivity(intent)
+            barcode = StringBuilder()
+
+        }
+
+        return false
     }
 
 
@@ -62,36 +71,23 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide();
         setContentView(R.layout.activity_main)
         imageView = findViewById(R.id.imageView)
-        editText = findViewById(R.id.editText)
-        button = findViewById(R.id.button)
-        button.setOnClickListener {
-            val intent: Intent = Intent(
-                this,
-                ProductActivity::class.java
-            )
-            Log.i("value text", editText.text.toString())
-            intent. putExtra("code", editText.text.toString())
-            startActivity(intent)
-        }
-
 
         val loadThread: Runnable = Runnable {
             try {
-                println("Call retrofit ....")
-                val retrofit = Retrofit.Builder()
-                    .baseUrl("https://station-api-dj49k.ondigitalocean.app")
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
-
-                val service: BannerService = retrofit.create(BannerService::class.java)
-
-                service.list().enqueue(object : Callback<List<BannerModel>> {
+                val service: RestService = RestClient.getClient().create(RestService::class.java)
+                println("Call banner list ....")
+                val call = service.list()
+                println("Enqueue call banner list ....")
+                call.enqueue(object : Callback<List<BannerModel>> {
                     override fun onFailure(call: Call<List<BannerModel>>?, t: Throwable?) {
+                        println("Fail call ....")
                         t?.printStackTrace()
                         Log.v("retrofit", "call failed")
+                        call?.cancel()
                     }
 
                     override fun onResponse(call: Call<List<BannerModel>>?, response: Response<List<BannerModel>>?) {
+                        println("Success call ....")
                         Log.v("retrofit", "call ok")
                         response!!.body()!!.forEach {
                             list.add(it)
@@ -100,6 +96,8 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 })
+
+                println("End call banner list ....")
 
             } catch (ex: Exception) {
                 ex.printStackTrace()
@@ -110,6 +108,8 @@ class MainActivity : AppCompatActivity() {
         val updateTimerThread: Runnable = object : Runnable {
             override fun run() {
                 if(list !=null && list.isNotEmpty()) {
+                    println("Tamanho da consulta: ")
+                    println(list.size)
                     var pos = Random.nextInt().absoluteValue % list.size
                     var pp: BannerModel = list[pos]
                     Log.i("---> POSITION 1", pos.toString())
@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity() {
 
         updaterHandler.postDelayed(loadThread, 0)
 
-        updaterHandler.postDelayed(updateTimerThread, 5)
+        updaterHandler.postDelayed(updateTimerThread, 5000)
 
 
     }

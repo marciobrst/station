@@ -6,12 +6,11 @@ import android.util.Log
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import br.com.embiess83.station.model.ProductModel
-import br.com.embiess83.station.service.ProductService
+import br.com.embiess83.station.service.RestService
+import br.com.embiess83.station.service.RestClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.text.DecimalFormat
 
 class ProductActivity : ComponentActivity() {
@@ -22,49 +21,24 @@ class ProductActivity : ComponentActivity() {
 
     private lateinit var productPrice: TextView
 
+    private lateinit var productCode: TextView
+
+    private lateinit var productError: TextView
+
+    private val decFormat = DecimalFormat("'R$' 0.00")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val code = intent.extras!!.getString("code")
-
         setContentView(R.layout.activity_product)
         productName = findViewById(R.id.productName)
         productPrice = findViewById(R.id.productPrice)
+        productCode = findViewById(R.id.productCode)
+        productError = findViewById(R.id.productError)
 
-        val loadThread: Runnable = Runnable {
-            try {
-                println("Call retrofit ....")
-                val retrofit = Retrofit.Builder()
-                    .baseUrl("https://station-api-dj49k.ondigitalocean.app")
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
-
-                val service: ProductService = retrofit.create(ProductService::class.java)
-                val decFormat = DecimalFormat("'R$ ' 0.00")
-
-                service.get(code!!).enqueue(object : Callback<ProductModel> {
-                    override fun onFailure(call: Call<ProductModel>?, t: Throwable?) {
-                        t?.printStackTrace()
-                        Log.v("retrofit", "call code failed")
-                    }
-
-                    override fun onResponse(call: Call<ProductModel>?, response: Response<ProductModel>?) {
-                        Log.v("retrofit", "call code ok")
-                        response?.body()?.run {
-                            productName.setText(this?.name)
-                            productName.invalidate()
-                            productPrice.setText(decFormat.format(this?.price))
-                            productPrice.invalidate()
-                        }
-                    }
-
-                })
-
-            } catch (ex: Exception) {
-                ex.printStackTrace()
-                Log.i("---", "Exception in thread")
-            }
-        }
+        val code = intent.extras!!.getString("code")
+        println("Product barcode $code")
+        productCode.text = code
+        productCode.invalidate()
 
         val backThread: Runnable = Runnable {
             try {
@@ -75,9 +49,55 @@ class ProductActivity : ComponentActivity() {
             }
         }
 
-        updaterHandler.postDelayed(loadThread, 0)
+        val loadThread: Runnable = Runnable {
+            try {
+                val service: RestService = RestClient.getClient().create(RestService::class.java)
+                println("Call product ....")
+                println("Product barcode2 $code")
+                val call: Call<ProductModel> = service.get(code!!)
+                println("Enqueue call product ....")
 
-        updaterHandler.postDelayed(backThread, 5000)
+                call.enqueue(object : Callback<ProductModel> {
+                    override fun onFailure(call: Call<ProductModel>?, t: Throwable?) {
+                        Log.v("fail retrofit", "call code failed")
+                        println("Falha na consulta de produto")
+                        productError.text = t?.message
+                        productError.invalidate()
+                        call?.cancel()
+                        updaterHandler.postDelayed(backThread, 5000)
+                    }
+
+                    override fun onResponse(call: Call<ProductModel>?, response: Response<ProductModel>?) {
+                        Log.v("success retrofit", "call code ok")
+                        println("Sucesso na consulta de produto")
+                        println(response?.code())
+                        println(response?.body())
+                        response?.body()?.run {
+                            Log.v("response body", this.toString())
+                            Log.v("response body", this.name)
+                            Log.v("response body", this?.price.toString())
+                            productName.text = this?.name
+                            productName.invalidate()
+                            productPrice.text = decFormat.format(this?.price)
+                            productPrice.invalidate()
+
+                            productError.text = "-"
+                            productError.invalidate()
+                        }
+                        updaterHandler.postDelayed(backThread, 5000)
+                    }
+
+                })
+                println("End Call product ....")
+
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+                Log.i("---", "Exception in thread")
+                updaterHandler.postDelayed(backThread, 5000)
+            }
+        }
+
+        updaterHandler.postDelayed(loadThread, 0)
 
     }
 }
